@@ -156,6 +156,8 @@ OPTIONS
      -crop                    Toggle for prognostic crop model. (default is off)
                               (can ONLY be turned on when BGC type is CN or BGC)
                               This turns on the namelist variable: use_crop
+     tw_irr_on                Toggle for irrigation will be two-way coupled with MOSART. (default is off)
+                              This turns on the namelist variable: tw_irr
      -csmdata "dir"           Root directory of CESM input data.
                               Can also be set by using the CSMDATA environment variable.
      -drydep                  Produce a drydep_inparm namelist that will go into the
@@ -296,6 +298,7 @@ sub process_commandline {
                test                  => 0,
                bgc                   => "default",
                crop                  => 0,
+               tw_irr_on             => 0,
                dynamic_vegetation    => 0,
                envxml_dir            => ".",
                vichydro              => 0,
@@ -346,6 +349,7 @@ sub process_commandline {
              "use_case=s"                => \$opts{'use_case'},
              "bgc=s"                     => \$opts{'bgc'},
              "crop"                      => \$opts{'crop'},
+             "tw_irr_on"                 => \$opts{'tw_irr_on'},
              "dynamic_vegetation"        => \$opts{'dynamic_vegetation'},
              "vichydro"                  => \$opts{'vichydro'},
              "maxpft=i"                  => \$opts{'maxpft'},
@@ -668,6 +672,7 @@ sub process_namelist_commandline_options {
   setup_cmdl_nutrient($opts, $nl_flags, $definition, $defaults, $nl, $cfg, $physv);
   setup_cmdl_nutrient_comp($opts, $nl_flags, $definition, $defaults, $nl, $cfg, $physv);
   setup_cmdl_crop($opts, $nl_flags, $definition, $defaults, $nl, $cfg, $physv);
+  setup_cmdl_tw_irr_on($opts, $nl_flags, $definition, $defaults, $nl, $cfg, $physv);
   setup_cmdl_maxpft($opts, $nl_flags, $definition, $defaults, $nl, $cfg, $physv);
   setup_cmdl_glc_nec($opts, $nl_flags, $definition, $defaults, $nl);
   setup_cmdl_irrigation($opts, $nl_flags, $definition, $defaults, $nl, $physv);
@@ -1340,6 +1345,34 @@ sub setup_cmdl_crop {
   $var = "use_crop";
   $val = ".false.";
   if ($nl_flags->{'crop'} eq 1) {
+    $val = ".true.";
+  }
+  my $group = $definition->get_group_name($var);
+  $nl->set_variable_value($group, $var, $val);
+  if (  ! $definition->is_valid_value( $var, $val ) ) {
+    my @valid_values   = $definition->get_valid_values( $var );
+    fatal_error("$var has a value ($val) that is NOT valid. Valid values are: @valid_values\n");
+  }
+}
+
+#------------------------------------------------------------------------------------------
+sub setup_cmdl_tw_irr_on {
+  my ($opts, $nl_flags, $definition, $defaults, $nl, $cfg, $physv) = @_;
+  $nl_flags->{'tw_irr'} = ".false.";
+  my $val;
+  my $var = "tw_irr_on";
+  $val = $opts->{$var};
+  $nl_flags->{'tw_irr_on'} = $val;
+  if ( $nl_flags->{'tw_irr_on'} eq 1 ) {
+    $nl_flags->{'tw_irr'} = ".true.";
+  }
+  if ( defined($nl->get_value("tw_irr")) && ($nl_flags->{'tw_irr'} ne $nl->get_value("tw_irr")) ) {
+    fatal_error("Namelist item tw_irr contradicts the command-line option -tw_irr, use the command line option");
+  }
+
+  $var = "tw_irr";
+  $val = ".false.";
+  if ($nl_flags->{'tw_irr_on'} eq 1) {
     $val = ".true.";
   }
   my $group = $definition->get_group_name($var);
