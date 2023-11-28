@@ -1,0 +1,22 @@
+# Output can be compared with Figure 3 of Merikanto et al (2007).
+
+mam4xx:
+  function: mer07_veh02_wang08_nuc_1box
+  newnuc_method_user_choice: 3
+  pbl_nuc_wang2008_user_choice: 0
+
+mam_box: # settings for the MAM box model
+  name: mer07_veh02_wang08_nuc_1box
+  newnuc_method_user_choice: 3
+  pbl_nuc_wang2008_user_choice: 0
+
+input:
+  lattice:
+    temperature: [235.15, 273.15]
+    c_h2so4: [1e6, 1e9]
+    xi_nh3: [0.1, 10, 100, 1000]
+    relative_humidity: [0.05, 1, 0.05]
+  fixed:
+    planetary_boundary_layer_height: 1100
+    height: 500
+

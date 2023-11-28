@@ -1,0 +1,207 @@
+//-------------------------------------------------------------------------
+// Copyright (c) 2021,
+// National Technology & Engineering Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government
+// retains certain rights in this software.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+// 1. Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright
+// notice, this list of conditions and the following disclaimer in the
+// documentation and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the Sandia Corporation nor the names of the
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
+// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
+// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//-------------------------------------------------------------------------
+
+#ifndef SKYWALKER_H
+#define SKYWALKER_H
+
+#include <float.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define SKYWALKER_MAJOR_VERSION @SKYWALKER_MAJOR_VERSION@
+#define SKYWALKER_MINOR_VERSION @SKYWALKER_MINOR_VERSION@
+#define SKYWALKER_PATCH_VERSION @SKYWALKER_PATCH_VERSION@
+
+// Prints a banner containing Skywalker's version info to stderr.
+void sw_print_banner(void);
+
+// Error codes (treated as integers).
+typedef enum sw_error_code_t {
+  SW_SUCCESS = 0,            // no error occurred
+  SW_YAML_FILE_NOT_FOUND,    // the specified YAML file was not found
+  SW_INVALID_YAML,           // a problem was encountered parsing the YAML file
+  SW_INVALID_PARAM_TYPE,     // an invalid parameter type was found in YAML
+  SW_INVALID_PARAM_VALUE,    // an invalid input value was read from the YAML file
+  SW_INVALID_SETTINGS_BLOCK, // an invalid setting block name was given
+  SW_SETTINGS_NOT_FOUND,     // the specified YAML settings block was not found
+  SW_INVALID_PARAM_NAME,     // the specified parameter name is invalid
+  SW_PARAM_NOT_FOUND,        // the specified setting/input parameter was not found
+  SW_TOO_MANY_LATTICE_PARAMS,// the specified lattice ensemble has > 7 parameters
+  SW_INVALID_ENUMERATION,    // an invalid enumerated parameter was found in YAML
+  SW_ENSEMBLE_TOO_LARGE,     // the specified ensemble doesn't fit into memory
+  SW_EMPTY_ENSEMBLE,         // the specified ensemble has no members
+  SW_WRITE_FAILURE           // an attempt to write the ensemble to a Python
+                             // module failed
+} sw_error_code_t;
+
+// Precision of real numbers
+typedef @SKYWALKER_REAL_TYPE@ sw_real_t;
+
+// Machine epsilon
+#define SW_EPSILON @SKYWALKER_EPSILON@
+
+// Minimum and maximum representable floating point numbers
+#define SW_MIN @SKYWALKER_MIN@
+#define SW_MAX @SKYWALKER_MAX@
+
+// This type represents an ensemble that has been loaded from a skywalker input
+// file. It's an opaque type whose innards cannot be manipulated.
+typedef struct sw_ensemble_t sw_ensemble_t;
+
+// This opaque type stores named settings intended for use with Skywalker driver
+// programs.
+typedef struct sw_settings_t sw_settings_t;
+
+// Input data for simulations. Opaque type.
+typedef struct sw_input_t sw_input_t;
+
+// Output data for simulations. Opaque type.
+typedef struct sw_output_t sw_output_t;
+
+// This type contains all data loaded from an ensemble, including an error code
+// and description of any issues encountered loading the ensemble. Do not
+// attempt to free any of these resources.
+typedef struct sw_ensemble_result_t {
+  // The settings associated with the driver program
+  sw_settings_t *settings;
+  // The ensemble loaded (or NULL on failure)
+  sw_ensemble_t *ensemble;
+  // An error code indicating any problems encountered loading the ensemble
+  // (zero = success, non-zero = failure)
+  int error_code;
+  // A string describing any error encountered, or NULL if error_code == 0.
+  const char* error_message;
+} sw_ensemble_result_t;
+
+// Reads an ensemble from a YAML input file, returning a pointer to the ensemble
+// (or NULL if the read was not successful). The settings_block argument
+// indicates the name of the YAML block to read to retrieve settings for the
+// driver program using Skywalker.
+sw_ensemble_result_t sw_load_ensemble(const char *yaml_file,
+                                      const char *settings_block);
+
+// This type stores the result of the attempt to fetch a setting.
+typedef struct sw_setting_result_t {
+  const char* value;         // fetched value (if error_code == 0)
+  int error_code;            // error code indicating success or failure
+  const char* error_message; // text description of error
+} sw_settings_result_t;
+
+// Returns true if the setting with the given name exists within the given
+// settings instance, false otherwise.
+bool sw_settings_has(sw_settings_t *settings, const char* name);
+
+// Retrieves the setting with the given name.
+sw_settings_result_t sw_settings_get(sw_settings_t *settings, const char *name);
+
+// Returns the size of the given ensemble.
+size_t sw_ensemble_size(sw_ensemble_t* ensemble);
+
+// Iterates over the inputs and outputs in an ensemble, making them available
+// one at a time for computation. This function returns true once for each
+// member of an ensemble and false once the ensemble's members have been
+// traversed. Use it as a predicate in a while loop in which inputs and outputs
+// are processed.
+bool sw_ensemble_next(sw_ensemble_t *ensemble,
+                      sw_input_t **input,
+                      sw_output_t **output);
+
+// This type stores the result of the attempt to fetch a scalar input parameter.
+typedef struct sw_input_result_t {
+  sw_real_t value;           // fetched value (if error_code == 0)
+  int error_code;            // error code indicating success or failure
+  const char* error_message; // text description of error
+} sw_input_result_t;
+
+// Returns true if a (scalar) input parameter with the given name exists within
+// the given input instance, false otherwise.
+bool sw_input_has(sw_input_t *input, const char* name);
+
+// Retrieves the (scalar) input parameter with the given name.
+sw_input_result_t sw_input_get(sw_input_t *input, const char *name);
+
+// Returns true if an input array parameter with the given name exists within
+// the given input instance, false otherwise.
+bool sw_input_has_array(sw_input_t *input, const char* name);
+
+// This type stores the result of an attempt to fetch an array-valued input
+// parameter.
+typedef struct sw_input_array_result_t {
+  sw_real_t *values;         // fetched values (if error_code == 0)
+  size_t size;               // number of values (if error_code == 0)
+  int error_code;            // error code indicating success or failure
+  const char* error_message; // text description of error
+} sw_input_array_result_t;
+
+// Retrieves the (array-valued) input parameter with the given name.
+sw_input_array_result_t sw_input_get_array(sw_input_t *input, const char *name);
+
+// This function sets a quantity with the given name and value within the given
+// output instance. This operation cannot fail under normal circumstances.
+void sw_output_set(sw_output_t *output, const char *name, sw_real_t value);
+
+// This function sets an array of quantities with the given name and values
+// within the given output instance. This operation cannot fail under normal
+// circumstances.
+void sw_output_set_array(sw_output_t *output, const char *name,
+                         const sw_real_t *values, size_t size);
+
+// This type stores the result of an attempt to write ensemble data to a
+// Python module.
+typedef struct sw_write_result_t {
+  int error_code;            // error code indicating success or failure
+  const char* error_message; // text description of error
+} sw_write_result_t;
+
+// Writes input and output data within the ensemble to a Python module stored
+// in the file with the given name, returning information about any failures
+// that occur.
+sw_write_result_t sw_ensemble_write(sw_ensemble_t *ensemble,
+                                    const char *module_filename);
+
+// Destroys an ensemble, freeing its allocated resources. Use this at the end
+// of your driver program, or when a fatal error has been encountered.
+void sw_ensemble_free(sw_ensemble_t *ensemble);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
+
+#endif

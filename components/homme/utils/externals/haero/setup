@@ -1,0 +1,248 @@
+#!/usr/bin/env bash
+
+# This script creates a build directory and sticks a config.sh script into it.
+# Then config.sh can be edited and run within the build directory.
+
+# Print usage info.
+if [ "$1" = "" ]; then
+  echo "setup: Creates a build directory with a configuration file."
+  echo "Usage: setup build_dir"
+  exit 1
+fi
+
+# Create the build directory if it doesn't exist.
+if [ ! -d $1 ]; then
+  mkdir -p $1
+fi
+
+# Copy our template config script into place.
+echo -e "#!/usr/bin/env bash\n" > $1/config.sh
+echo "SOURCE_DIR=$PWD" >> $1/config.sh
+cat <<EOT >> $1/config.sh
+# ^^^^^^ location of haero source code.
+
+# config.sh -- A CMake configuration script.
+# Edit this file to change the parameters in your build. Uncomment exactly one
+# value for each parameter.
+
+#-----------------------------------------------------------------------------
+#                             Installation prefix
+#-----------------------------------------------------------------------------
+PREFIX=$PWD/$1
+
+#-----------------------------------------------------------------------------
+#                             Third-party libraries
+#-----------------------------------------------------------------------------
+# Usually you don't need to set these. But we provide this ability in case
+# another project (e.g. eamxx) needs to build this one and use its own
+# libraries. We also use these in our automatic testing environment. If any one
+# of these variables is supplied for a given library, all must be supplied.
+
+#EKAT_SOURCE_DIR=/path/to/ekat-src
+#EKAT_BINARY_DIR=/path/to/ekat-bin
+
+#-----------------------------------------------------------------------------
+#                             Inter-Node Parallelism (MPI)
+#-----------------------------------------------------------------------------
+
+# Build with MPI for parallel simulations.
+ENABLE_MPI=ON
+
+# The name of the program used to execute MPI programs. Some machines require
+# this invocation even for single-process runs.
+MPI_EXEC=
+#MPI_EXEC=mpiexec
+
+# The flag used by MPI_EXEC to indicate the number of processes to use.
+MPI_NP_FLAG=
+#MPI_NP_FLAG=-n
+
+# Any extra arguments that need to be passed to MPI_EXEC.
+MPI_EXTRA_ARGS=
+
+#-----------------------------------------------------------------------------
+#                             On-Node Parallelism (Kokkos)
+#-----------------------------------------------------------------------------
+
+# Set this to ON to dispatch aerosol calculations to a GPU.
+ENABLE_GPU=OFF
+
+# OPTIONAL: Select one of the following device architectures based on the above.
+# (These options are taken from kokkos_arch.cmake)
+#DEVICE_ARCH=AMDAVX          # AMD CPU
+#DEVICE_ARCH=ARMV80          # ARMv8.0 Compatible CPU
+#DEVICE_ARCH=ARMV81          # ARMv8.1 Compatible CPU
+#DEVICE_ARCH=ARMV8_THUNDERX  # ARMv8 Cavium ThunderX CPU
+#DEVICE_ARCH=ARMV8_THUNDERX2 # ARMv8 Cavium ThunderX2 CPU
+#DEVICE_ARCH=A64FX           # ARMv8.2 CPU with SVE Support
+#DEVICE_ARCH=WSM             # Intel Westmere CPU
+#DEVICE_ARCH=SNB             # Intel Sandy/Ivy Bridge CPUs
+#DEVICE_ARCH=HSW             # Intel Haswell CPUs
+#DEVICE_ARCH=BDW             # Intel Broadwell Xeon E-class CPUs
+#DEVICE_ARCH=ICL             # Intel Ice Lake Client CPUs (AVX512)
+#DEVICE_ARCH=ICX             # Intel Ice Lake Xeon Server CPUs (AVX512)
+#DEVICE_ARCH=SKX             # Intel Sky Lake Xeon E-class HPC CPUs (AVX512) (CPU)
+#DEVICE_ARCH=SKL             # Intel Skylake Client CPUs
+#DEVICE_ARCH=KNC             # Intel Knights Corner Xeon Phi CPU
+#DEVICE_ARCH=KNL             # Intel Knights Landing Xeon Phi CPU
+#DEVICE_ARCH=BGQ             # IBM Blue Gene Q CPU
+#DEVICE_ARCH=POWER7          # IBM POWER7 CPUs
+#DEVICE_ARCH=POWER8          # IBM POWER8 CPUs
+#DEVICE_ARCH=POWER9          # IBM POWER9 CPUs
+#DEVICE_ARCH=ZEN             # AMD Zen architecture (CPU)
+#DEVICE_ARCH=ZEN2            # AMD Zen2 architecture (CPU)
+#DEVICE_ARCH=ZEN3            # AMD Zen3 architecture (CPU)
+#DEVICE_ARCH=KEPLER30        # NVIDIA Kepler generation CC 3.0 (CUDA)
+#DEVICE_ARCH=KEPLER32        # NVIDIA Kepler generation CC 3.2 (CUDA)
+#DEVICE_ARCH=KEPLER35        # NVIDIA Kepler generation CC 3.5 (CUDA)
+#DEVICE_ARCH=KEPLER37        # NVIDIA Kepler generation CC 3.7 (CUDA)
+#DEVICE_ARCH=MAXWELL50       # NVIDIA Maxwell generation CC 5.0 (CUDA)
+#DEVICE_ARCH=MAXWELL52       # NVIDIA Maxwell generation CC 5.2 (CUDA)
+#DEVICE_ARCH=MAXWELL53       # NVIDIA Maxwell generation CC 5.3 (CUDA)
+#DEVICE_ARCH=PASCAL60        # NVIDIA Pascal generation CC 6.0 (CUDA)
+#DEVICE_ARCH=PASCAL61        # NVIDIA Pascal generation CC 6.1 (CUDA)
+#DEVICE_ARCH=VOLTA70         # NVIDIA Volta generation CC 7.0 (CUDA)
+#DEVICE_ARCH=VOLTA72         # NVIDIA Volta generation CC 7.2 (CUDA)
+#DEVICE_ARCH=TURING75        # NVIDIA Turing generation CC 7.5 (CUDA)
+#DEVICE_ARCH=AMPERE80        # NVIDIA Ampere generation CC 8.0 (CUDA)
+#DEVICE_ARCH=AMPERE86        # NVIDIA Ampere generation CC 8.6 (CUDA)
+#DEVICE_ARCH=VEGA900         # AMD GPU MI25 GFX900 (HIP)
+#DEVICE_ARCH=VEGA906         # AMD GPU MI50/MI60 GFX906 (HIP)
+#DEVICE_ARCH=VEGA908         # AMD GPU (HIP)
+#DEVICE_ARCH=VEGA90A         # AMD GPU MI200 GFX90A (HIP)
+#DEVICE_ARCH=INTEL_GEN       # Intel GPUs (SPIR64-based devices)
+#DEVICE_ARCH=INTEL_DG1       # Intel Iris XeMAX GPU
+#DEVICE_ARCH=INTEL_GEN9      # Intel GPU Gen9
+#DEVICE_ARCH=INTEL_GEN11     # Intel GPU Gen11
+#DEVICE_ARCH=INTEL_GEN12LP   # Intel GPU Gen12LP
+#DEVICE_ARCH=INTEL_XEHP      # Intel GPU Xe-HP
+#DEVICE_ARCH=INTEL_PVC       # Intel GPU Ponte Vecchio
+
+#-----------------------------------------------------------------------------
+#                         Build features and parameters
+#-----------------------------------------------------------------------------
+
+# Set this to
+# * 'Debug' for development (debugging symbols, no optimization)
+# * 'Release' for production (no symbols, optimization).
+BUILD_TYPE=Debug
+
+# Set this to
+# * 'double' for double precision
+# * 'single' for single precision
+PRECISION=double
+
+# Uncomment this if you want really verbose builds.
+#VERBOSE=ON
+
+#-----------------------------------------------------------------------------
+#                                   Compilers
+#-----------------------------------------------------------------------------
+
+CXX=c++
+CC=cc
+FC=gfortran
+
+# Override compilers here (ONLY if you know what you're doing!).
+
+# C++ compiler.
+#CXX=c++
+
+# Fortran compiler.
+#FC=gfortran
+
+# C compiler.
+#CC=cc
+
+#-----------------------------------------------------------------------------
+#                   Don't change anything below here.
+#-----------------------------------------------------------------------------
+
+# Are we on a special machine?
+pushd "\$SOURCE_DIR"/machines >& /dev/null
+for MACHINE_FILE in \$(ls)
+do
+  MACHINE=\${MACHINE_FILE/\.sh/}
+  echo \`hostname\` | grep -q "\$MACHINE" 
+  host_match=\$?
+  echo \$SYSTEM_NAME | grep -q "\$MACHINE"
+  sys_match=\$?
+  if  [ \$host_match -eq 0 ] || [ \$sys_match -eq 0 ]; then
+    echo "Found machine file \$MACHINE_FILE. Setting up environment for \$MACHINE..."
+    source ./\$MACHINE.sh
+  fi
+done
+popd >& /dev/null
+
+# We use good old-fashioned UNIX makefiles.
+GENERATOR="Unix Makefiles"
+
+OPTIONS=""
+if [ "\$ENABLE_MPI" = "ON" ]; then
+  if [ ! "\$MPI_EXEC" = "" ]; then
+    if [ "\$MPI_NP_FLAG" = "" ]; then
+      echo "Error: MPI_NP_FLAG must be set if MPI_EXEC is set."
+      exit 1
+    fi
+    OPTIONS="\$OPTIONS -DHAERO_MPI_EXEC=\$MPI_EXEC -DHAERO_MPI_NP_FLAG=\$MPI_NP_FLAG"
+    if [ ! "\$MPI_EXTRA_ARGS" = "" ]; then
+      OPTIONS="\$OPTIONS -DHAERO_MPI_EXTRA_ARGS=\$MPI_EXTRA_ARGS"
+    fi
+  fi
+fi
+if [ "\$VERBOSE" = "ON" ]; then
+  OPTIONS="\$OPTIONS -DCMAKE_VERBOSE_MAKEFILE=ON"
+fi
+
+# Set the device architecture if needed.
+if [ ! "\$DEVICE_ARCH" = "" ]; then
+  OPTIONS="\$OPTIONS -DKokkos_ARCH_\$DEVICE_ARCH:BOOL=ON"
+fi
+
+# Configure ekat if needed.
+if [ ! "\$EKAT_SOURCE_DIR" = "" -o ! "\$EKAT_BINARY_DIR" = "" ]; then
+  if [ "\$EKAT_SOURCE_DIR" = "" ]; then
+    echo "Error: EKAT_SOURCE_DIR must be specified for a custom EKAT library."
+    exit 1
+  fi
+  if [ "\$EKAT_BINARY_DIR" = "" ]; then
+    echo "Error: EKAT_BINARY_DIR must be specified for a custom EKAT library."
+    exit 1
+  fi
+  OPTIONS="\$OPTIONS -DEKAT_SOURCE_DIR=\$EKAT_SOURCE_DIR"
+  OPTIONS="\$OPTIONS -DEKAT_BINARY_DIR=\$EKAT_BINARY_DIR"
+fi
+
+# Add extra linker flags if needed.
+if [ ! "\$EXTRA_LDFLAGS" = "" ]; then
+  OPTIONS="\$OPTIONS -DHAERO_EXTRA_LDFLAGS=\$EXTRA_LDFLAGS"
+fi
+
+# Clear the build cache.
+rm -f CMakeCache.txt
+
+# Configure the build.
+cmake \
+ -DCMAKE_INSTALL_PREFIX:PATH=\$PREFIX \
+ -DCMAKE_BUILD_TYPE=\$BUILD_TYPE \
+ -DCMAKE_C_COMPILER=\$CC \
+ -DCMAKE_CXX_COMPILER=\$CXX \
+ -DHAERO_ENABLE_GPU=\$ENABLE_GPU \
+ -DHAERO_ENABLE_MPI=\$ENABLE_MPI \
+ -DHAERO_PRECISION=\$PRECISION \
+ \$OPTIONS \
+ -G "\$GENERATOR" \
+ \$SOURCE_DIR
+EOT
+
+# Make config.sh executable.
+chmod a+x $1/config.sh
+
+# Give instructions.
+echo "Your build directory '$1' is ready."
+echo "To configure your build:"
+echo "  1. cd $1"
+echo "  2. Edit config.sh"
+echo "  3. source config.sh"
+echo "  4. Build using 'make -j'."
+

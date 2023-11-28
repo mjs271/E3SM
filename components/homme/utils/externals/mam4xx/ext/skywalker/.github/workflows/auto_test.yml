@@ -1,0 +1,83 @@
+name: auto_test
+
+# This action is triggered:
+# 1. when someone creates a pull request for a merge to the main branch
+# 2. when changes are merged into the main branch (via a pull request)
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Below are jobs, each of which runs sequentially.
+jobs:
+  # This job builds Skywalker and runs its test suite.
+  build:
+    runs-on: ${{ matrix.os }}
+
+    # A build matrix storing all desired configurations.
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-latest]
+        build-type: [Debug, Release]
+        fp-precision: [single, double]
+
+    # Steps for building and running tests.
+    steps:
+
+    - name: Installing GFortran (Linux)
+      if: contains(matrix.os, 'ubuntu')
+      run: sudo apt-get install gfortran
+
+    - name: Installing GFortran (macOS)
+      if: contains(matrix.os, 'macos')
+      run: brew install gfortran
+
+    - name: Checking out repository
+      uses: actions/checkout@v2
+
+    - name: Configuring Skywalker (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision, Linux)
+      if: contains(matrix.os, 'ubuntu')
+      run: |
+        mkdir build
+        cd build
+        cmake \
+          -DCMAKE_INSTALL_PREFIX=`pwd`/../install \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
+          -DCMAKE_C_COMPILER=cc \
+          -DCMAKE_CXX_COMPILER=c++ \
+          -DCMAKE_Fortran_COMPILER=gfortran \
+          -DSKYWALKER_PRECISION=${{ matrix.fp-precision }} \
+          -G "Unix Makefiles" \
+          ..
+
+    - name: Configuring Skywalker (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision, Linux)
+      if: contains(matrix.os, 'macos')
+      run: |
+        mkdir build
+        cd build
+        cmake \
+          -DCMAKE_INSTALL_PREFIX=`pwd`/../install \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
+          -DCMAKE_C_COMPILER=cc \
+          -DCMAKE_CXX_COMPILER=c++ \
+          -DENABLE_FORTRAN=OFF \
+          -DSKYWALKER_PRECISION=${{ matrix.fp-precision }} \
+          -G "Unix Makefiles" \
+          ..
+
+    - name: Building Skywalker (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+      run: |
+        cd build
+        make -j
+
+    - name: Running tests (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+      run: |
+        cd build
+        ctest -V
+
+    - name: Installing Skywalker (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+      run: |
+        cd build
+        make install
+

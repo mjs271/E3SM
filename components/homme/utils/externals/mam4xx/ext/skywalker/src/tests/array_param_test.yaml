@@ -1,0 +1,14 @@
+# This input file tests Skywalker's support for array parameters.
+
+settings:
+  setting1: hello
+  setting2: 81
+  setting3: 3.14159265357
+
+input:
+  fixed:
+    p2: [4, 5, 6]
+    p3: 3
+  enumerated:
+    p1: [[1, 2, 3, 4], [11,12,13,14], [1,1,1,1]]
+
