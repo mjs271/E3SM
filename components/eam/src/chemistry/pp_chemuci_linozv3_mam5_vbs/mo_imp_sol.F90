@@ -8,13 +8,12 @@
 
 
 
-
-
-
 module mo_imp_sol
   use shr_kind_mod, only : r8 => shr_kind_r8
+#include "../yaml/common_files/common_uses.ymlf90"
   use chem_mods,    only : clscnt4, gas_pcnst, clsmap
   use cam_logfile,  only : iulog
+  use perf_mod,          only : t_startf, t_stopf
   implicit none
   private
   public :: imp_slv_inti, imp_sol
@@ -373,6 +372,10 @@ contains
     logical :: frc_mask, iter_conv
     logical :: converged(max(1,clscnt4))
     real(r8), dimension(ncol,pver,max(1,clscnt4)) :: prod_out, loss_out
+    integer :: y_i, y_k
+#include "../yaml/mo_imp_sol/f90_yaml/imp_sol_beg_yml.f90"
+
+    y_lchnk = lchnk
     prod_out(:,:,:) = 0._r8
     loss_out(:,:,:) = 0._r8
     solution(:) = 0._r8
@@ -380,8 +383,15 @@ contains
     ! ... class independent forcing
     !-----------------------------------------------------------------------
     if( cls_rxt_cnt(1,4) > 0 .or. extcnt > 0 ) then
-       call indprd( 4, ind_prd, clscnt4, base_sol, extfrc, &
-            reaction_rates, ncol )
+      call t_startf('mjs_indprd')
+#ifdef YAML_INDPRD
+        call indprd( 4, ind_prd, clscnt4, base_sol, extfrc, &
+             reaction_rates, ncol, lchnk, yaml )
+#else
+        call indprd( 4, ind_prd, clscnt4, base_sol, extfrc, &
+             reaction_rates, ncol)
+#endif
+      call t_stopf('mjs_indprd')
     else
        do m = 1,max(1,clscnt4)
           ind_prd(:,:,m) = 0._r8
@@ -441,11 +451,24 @@ contains
              ! ... the linear component
              !-----------------------------------------------------------------------
              !if( cls_rxt_cnt(2,4) > 0 ) then
-                call linmat( lin_jac, lsol, lrxt, lhet )
+#ifdef YAML_LINMAT
+             call linmat( lin_jac, lsol, lrxt, lhet, i, lev, lchnk, yaml )
+#else
+             call linmat( lin_jac, lsol, lrxt, lhet )
+#endif
              !end if
              !=======================================================================
              ! the newton-raphson iteration for f(y) = 0
              !=======================================================================
+! #include "../yaml/mo_imp_sol/f90_yaml/newton_raphson_iter_beg_yml.f90"
+! call write_var(unit_input,unit_output,'dti',dti)
+! call write_var(unit_input,unit_output,'lin_jac',lin_jac)
+! call write_var(unit_input,unit_output,'lrxt',lrxt)
+! call write_var(unit_input,unit_output,'lhet',lhet)
+! call write_var(unit_input,unit_output,'iter_invariant',iter_invariant)
+! call write_var(unit_input,unit_output,'lsol',lsol)
+! call write_var(unit_input,unit_output,'solution',solution)
+             call t_startf('mjs_nr_solve')
              iter_loop : do nr_iter = 1,itermax
                 !-----------------------------------------------------------------------
                 ! ... the non-linear component
@@ -518,6 +541,8 @@ contains
                    end if
                 end if
              end do iter_loop
+             call t_stopf('mjs_nr_solve')
+! #include "../yaml/mo_imp_sol/f90_yaml/newton_raphson_iter_end_yml.f90"
              !-----------------------------------------------------------------------
              ! ... check for newton-raphson convergence
              !-----------------------------------------------------------------------
@@ -671,5 +696,6 @@ contains
        call outfld( trim(solsym(j))//'_CHMP', prod_out(:,:,i), ncol, lchnk )
        call outfld( trim(solsym(j))//'_CHML', loss_out(:,:,i), ncol, lchnk )
     enddo
+#include "../yaml/mo_imp_sol/f90_yaml/imp_sol_end_yml.f90"
   end subroutine imp_sol
 end module mo_imp_sol

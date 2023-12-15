@@ -1,6 +1,6 @@
 
 module mo_exp_sol
-
+#include "../yaml/common_files/common_uses.ymlf90"
   private
   public :: exp_sol
   public :: exp_sol_inti
@@ -44,7 +44,7 @@ contains
     use mo_tracname,   only : solsym
     use mo_chem_utls,      only :  get_inv_ndx
     use cam_logfile,      only : iulog
-    use chem_mods,     only : nfs 
+    use chem_mods,     only : nfs
     implicit none
     !-----------------------------------------------------------------------
     !     	... Dummy arguments
@@ -64,6 +64,10 @@ contains
     real(r8), intent(out)   ::  chemmp_prod(ncol,pver,gas_pcnst)      ! production rate (vmr/delt)
     real(r8), intent(out)   ::  chemmp_loss(ncol,pver,gas_pcnst)      ! loss rate (vmr/delt)
 
+#ifdef YAML_INDPRD
+    type(yaml_vars) :: yaml
+#endif
+
     !-----------------------------------------------------------------------
     !     	... Local variables
     !-----------------------------------------------------------------------
@@ -80,21 +84,28 @@ contains
     chem_loss(:,:,:) = 0._r8
     chemmp_prod(:,:,:) = 0._r8
     chemmp_loss(:,:,:) = 0._r8
-    !-----------------------------------------------------------------------      
+    !-----------------------------------------------------------------------
     !        ... Put "independent" production in the forcing
-    !-----------------------------------------------------------------------      
+    !-----------------------------------------------------------------------
     base_sol_reset = base_sol
-    call indprd( 1, ind_prd, clscnt1, base_sol, extfrc, &
-         reaction_rates, ncol )
+#ifdef YAML_INDPRD
+        ! call t_startf('mjs_indprd_exp_sol_L90')
+        call indprd( 1, ind_prd, clscnt1, base_sol, extfrc, &
+             reaction_rates, ncol, lchnk, yaml )
+        ! call t_stopf('mjs_indprd_exp_sol_L90')
+#else
+        call indprd( 1, ind_prd, clscnt1, base_sol, extfrc, &
+             reaction_rates, ncol)
+#endif
 
-    !-----------------------------------------------------------------------      
+    !-----------------------------------------------------------------------
     !      	... Form F(y)
-    !-----------------------------------------------------------------------      
+    !-----------------------------------------------------------------------
     call exp_prod_loss( prod, loss, base_sol, reaction_rates, het_rates )
 
-    !-----------------------------------------------------------------------      
+    !-----------------------------------------------------------------------
     !    	... Solve for the mixing ratio at t(n+1)
-    !-----------------------------------------------------------------------      
+    !-----------------------------------------------------------------------
 
     do m = 1,clscnt1
        l = clsmap(m,1)
@@ -114,8 +125,8 @@ contains
        ! SO2 and H2SO4 can be dead zeros due to aerosol processes
        ! use a different equation for them to avoid debug built issues
 
-#if (defined MODAL_AERO_5MODE)  
-       ! for MAM5, H2SO4, SO2, and DMS needs to be solved in the stratosphere     
+#if (defined MODAL_AERO_5MODE)
+       ! for MAM5, H2SO4, SO2, and DMS needs to be solved in the stratosphere
        elseif (trim(solsym(l)) == 'H2SO4' .or. trim(solsym(l)) == 'SO2') then
          ! V2-like explicit equation is used to solve H2SO4 and SO2 due to dead zero values
          do i = 1,ncol
@@ -139,11 +150,11 @@ contains
           do i = 1,ncol
               do k = ltrop(i)+1,pver
                  chem_loss(i,k,l) = -loss(i,k,m)
-                 chem_prod(i,k,l) = prod(i,k,m)+ind_prd(i,k,m) 
+                 chem_prod(i,k,l) = prod(i,k,m)+ind_prd(i,k,m)
                  base_sol(i,k,l) = base_sol(i,k,l) + delt * (prod(i,k,m) + ind_prd(i,k,m) - loss(i,k,m))
               end do
           end do
-#endif         
+#endif
        else
           do i = 1,ncol
              do k = ltrop(i)+1,pver
@@ -158,14 +169,21 @@ contains
        call outfld( trim(solsym(l))//'_CHMP', wrk(:,:), ncol, lchnk )
        wrk(:,:) = (loss(:,:,m))*xhnm
        call outfld( trim(solsym(l))//'_CHML', wrk(:,:), ncol, lchnk )
-       
+
     end do
 !----------- for UCIchem diagnostics ------------
     ! Note: base_sol_rest and diags_reaction_rates are passed to indprd and exp_prod_loss
     !       so the reset tendency for tropopause folds (i.e., stratospheric boxes below the tropopause)
     !       and the explicit solver tendency are included in chemmp_prod and chemmp_loss below.
+#ifdef YAML_INDPRD
+    ! call t_startf('mjs_indprd_exp_sol_177')
+    call indprd( 1, ind_prd, clscnt1, base_sol_reset, extfrc, &
+          diags_reaction_rates, ncol, lchnk, yaml )
+    ! call t_stopf('mjs_indprd_exp_sol_177')
+#else
     call indprd( 1, ind_prd, clscnt1, base_sol_reset, extfrc, &
          diags_reaction_rates, ncol )
+#endif
     call exp_prod_loss( prod, loss, base_sol_reset, diags_reaction_rates, het_rates )
     do m = 1,clscnt1
        l = clsmap(m,1)
@@ -184,7 +202,7 @@ contains
                  chemmp_prod(i,k,l) = prod(i,k,m)+ind_prd(i,k,m)
                  chemmp_loss(i,k,l) = (base_sol_reset(i,k,l)*exp(-delt*loss(i,k,m)/base_sol_reset(i,k,l)) - base_sol_reset(i,k,l))/delt
               end do
-           end do  
+           end do
 #else
       if (trim(solsym(l)) == 'H2SO4' .or. trim(solsym(l)) == 'SO2') then
            do i = 1,ncol
@@ -192,7 +210,7 @@ contains
                  chemmp_prod(i,k,l) = prod(i,k,m)+ind_prd(i,k,m)
                  chemmp_loss(i,k,l) = -loss(i,k,m)
                end do
-           end do  
+           end do
 #endif
       else
         do i = 1,ncol
@@ -201,7 +219,7 @@ contains
               chemmp_loss(i,k,l) = (base_sol_reset(i,k,l)*exp(-delt*loss(i,k,m)/base_sol_reset(i,k,l)) - base_sol_reset(i,k,l))/delt
            end do
         end do
-      endif 
+      endif
 
     end do
 

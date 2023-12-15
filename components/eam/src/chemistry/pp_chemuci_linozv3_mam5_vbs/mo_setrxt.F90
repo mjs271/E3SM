@@ -2,6 +2,7 @@
       module mo_setrxt
 
       use shr_kind_mod, only : r8 => shr_kind_r8
+#include "../yaml/common_files/common_uses.ymlf90"
 
       private
       public :: setrxt
@@ -9,7 +10,7 @@
 
       contains
 
-      subroutine setrxt( rate, temp, m, ncol )
+      subroutine setrxt( rate, temp, m, ncol, y_lchnk )
 
       use ppgrid,       only : pver, pcols
       use shr_kind_mod, only : r8 => shr_kind_r8
@@ -34,6 +35,7 @@
       real(r8)  ::  exp_fac(ncol,pver)
       real(r8)  :: ko(ncol,pver)
       real(r8)  :: kinf(ncol,pver)
+#include "../yaml/mo_setrxt/f90_yaml/setrxt_beg_yml.f90"
 
       rate(:,:,92) = 2e-11_r8
       rate(:,:,93) = 2e-11_r8
@@ -154,6 +156,7 @@
       ko(:,:) = 9.70E-29_r8 * itemp(:,:)**5.6_r8
       kinf(:,:) = 9.30E-12_r8 * itemp(:,:)**1.5_r8
       call jpl( rate(1,1,56), m, 0.6_r8, ko, kinf, n )
+#include "../yaml/mo_setrxt/f90_yaml/setrxt_end_yml.f90"
 
       end subroutine setrxt
 

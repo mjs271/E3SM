@@ -1,0 +1,22 @@
+!uncomment "#define YAML_*" line below to invoke test generation for a module
+use spmd_utils,   only : masterproc
+
+! mo_setrxt
+#define YAML_SETRXT
+
+! mo_usrrxt
+#define YAML_USRRXT
+
+! mo_imp_sol
+#define YAML_IMP_SOL
+
+! newton-raphson solve (in mo_imp_sol)
+! #define YAML_NEWTON_RAPHSON
+
+! mo_indprd
+#define YAML_INDPRD
+
+! mo_lin_matrix
+!#define YAML_LINMAT
+
+use yaml_input_file_io

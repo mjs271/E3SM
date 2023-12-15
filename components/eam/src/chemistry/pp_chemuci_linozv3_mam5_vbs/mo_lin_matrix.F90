@@ -11,7 +11,7 @@
 
 
       module mo_lin_matrix
-
+#include "../yaml/common_files/common_uses.ymlf90"
       private
       public :: linmat
 
@@ -169,10 +169,12 @@
          mat(26) = .500_r8*rxt(103)
          mat(23) = .500_r8*rxt(104)
 
-
       end subroutine linmat01
-
+#ifdef YAML_LINMAT
+      subroutine linmat( mat, y, rxt, het_rates, y_i, y_k, y_lchnk, yaml )
+#else
       subroutine linmat( mat, y, rxt, het_rates )
+#endif
 !----------------------------------------------
 !       ... linear matrix entries for implicit species
 !----------------------------------------------
@@ -189,9 +191,9 @@
       real(r8), intent(in)    ::  rxt(rxntot)
       real(r8), intent(in)    ::  het_rates(max(1,gas_pcnst))
       real(r8), intent(inout) ::  mat(nzcnt)
-
+#include "../yaml/mo_lin_matrix/f90_yaml/linmat_beg_yml.f90"
       call linmat01( mat, y, rxt, het_rates )
-
+#include "../yaml/mo_lin_matrix/f90_yaml/linmat_end_yml.f90"
       end subroutine linmat
 
       end module mo_lin_matrix
